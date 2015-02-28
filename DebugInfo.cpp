@@ -56,6 +56,8 @@
 #include <limits.h>
 #include <string>
 
+#pragma comment(lib, "Imagehlp.lib")
+
 using namespace std;
 // MakePtr is a macro that allows you to easily add to values (including
  // pointers) together without dealing with C's pointer arithmetic. It
@@ -666,6 +668,11 @@ char* GuidToString(GUID guid);
 	}
  }
  
+static void zero_str(char * ptr)
+{
+    size_t len = strlen(ptr);
+    memset(ptr, 0, len);
+}
 
 ///////////////////////////////////////////////////////////////////////////////
  //
@@ -731,12 +738,13 @@ char* GuidToString(GUID guid);
 		 {
 			int iLength = strlen(pdbFile);
 			int j = 0;
-			for(int i=0; i < iLength; i++) 
+			for(int j=0; j < iLength; j++) 
 			{
-				j = i;
-				pCvInfo->PdbFileName[i] = pdbFile[i];
+				pCvInfo->PdbFileName[j] = pdbFile[j];
 			}
-			pCvInfo->PdbFileName[j+1] = '\0'; // null termination
+            // zero-out all the remain chars
+            char * ptr = reinterpret_cast<char *>(& pCvInfo->PdbFileName[j+1]);
+            zero_str(ptr);
 		 }
 	 }
 	 else if(CvSignature == CV_SIGNATURE_RSDS)
@@ -792,7 +800,9 @@ char* GuidToString(GUID guid);
 				j = i;
 				pCvInfo->PdbFileName[i] = pdbFile[i];
 			}
-			pCvInfo->PdbFileName[j+1] = '\0'; // null termination
+            // zero-out all the remain chars
+            char * ptr = reinterpret_cast<char *>(& pCvInfo->PdbFileName[j+1]);
+            zero_str(ptr);
 			std::string str;
 			str.append("Replaced Debug file Path to: ").append((char*)pCvInfo->PdbFileName);
 			Print(str);
