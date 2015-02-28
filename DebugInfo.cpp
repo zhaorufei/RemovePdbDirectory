@@ -4,6 +4,11 @@
 ////////////////////////////////////////////////////////////////////////
 // work by Oleg Starodumov (http://www.debuginfo.com) in his example code titled "DebugDir example".
 //
+// compile: vcvars32
+// cl /MT /Zi /O2 /EHsc /W3 DebugInfo.cpp
+// It's better to avoid depend on msvc runtime such as msvcr100.dll because 
+// the main purpose useage of the utility is in a build process.
+//
 // Background:
 // The build tool that is delivered with the DDK manages to build all  of my .sys files, 
 //in such a way that they contain the full path to the debug
