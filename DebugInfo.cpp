@@ -1,3 +1,6 @@
+#define _CRT_SECURE_NO_DEPRECATE
+#define _CRT_SECURE_NO_WARNINGS
+#define _CRT_NONSTDC_NO_DEPRECATE
 // DebugInfo.cpp : Defines the entry point for the console application.
 // Original work:
 // DebugDir.cpp : Defines the entry point for the console application.
@@ -60,65 +63,66 @@
 #include <stdio.h>
 #include <limits.h>
 #include <string>
+#include <iostream>
 
 #pragma comment(lib, "Imagehlp.lib")
 
 using namespace std;
 // MakePtr is a macro that allows you to easily add to values (including
- // pointers) together without dealing with C's pointer arithmetic. It
- // essentially treats the last two parameters as DWORDs. The first
- // parameter is used to typecast the result to the appropriate pointer type.
- #define MakePtr(cast, ptr, addValue) (cast)((DWORD)(ptr) + (DWORD)(addValue))
- 
+// pointers) together without dealing with C's pointer arithmetic. It
+// essentially treats the last two parameters as DWORDs. The first
+// parameter is used to typecast the result to the appropriate pointer type.
+#define MakePtr(cast, ptr, addValue) (cast)((DWORD)(ptr) + (DWORD)(addValue))
+
 
 ///////////////////////////////////////////////////////////////////////////////
- // CodeView debug information structures
- //
- #define CV_SIGNATURE_NB10 '01BN' //This is little endian byte order,
- #define CV_SIGNATURE_RSDS 'SDSR' //because we'll read them in as DWORDs.
- 
-// CodeView header
- struct CV_HEADER
- {
-	 DWORD CvSignature; // NBxx
-	 LONG Offset; // Always 0 for NB10
- };
- 
-// CodeView NB10 debug information
- // (used when debug information is stored in a PDB 2.00 file)
- struct CV_INFO_PDB20
- {
-	 CV_HEADER Header;
-	 DWORD Signature; // seconds since 01.01.1970
-	 DWORD Age; // an always-incrementing value
-	 BYTE PdbFileName[1]; // zero terminated string with the name of the PDB file
- };
- 
-// CodeView RSDS debug information
- // (used when debug information is stored in a PDB 7.00 file)
- struct CV_INFO_PDB70
- {
-	 DWORD CvSignature;
-	 GUID Signature; // unique identifier
-	 DWORD Age; // an always-incrementing value
-	 BYTE PdbFileName[1]; // zero terminated string with the name of the PDB file
- };
- 
+// CodeView debug information structures
+//
+#define CV_SIGNATURE_NB10 '01BN' //This is little endian byte order,
+#define CV_SIGNATURE_RSDS 'SDSR' //because we'll read them in as DWORDs.
 
- LPCTSTR ProcessCmdLine(int argc, TCHAR* argv[]);
- bool CheckDosHeader(PIMAGE_DOS_HEADER pDosHeader);
- bool CheckNtHeaders(PIMAGE_NT_HEADERS pNtHeaders);
- bool CheckSectionHeaders(PIMAGE_NT_HEADERS pNtHeaders);
- bool CheckDebugDirectory(PIMAGE_DEBUG_DIRECTORY pDebugDir, DWORD DebugDirSize);
- bool IsPE32Plus(PIMAGE_OPTIONAL_HEADER pOptionalHeader, bool& bPE32Plus);
- bool GetDebugDirectoryRVA(PIMAGE_OPTIONAL_HEADER pOptionalHeader, DWORD& DebugDirRva, DWORD& DebugDirSize);
- bool GetFileOffsetFromRVA(PIMAGE_NT_HEADERS pNtHeaders, DWORD Rva, DWORD& FileOffset);
- void CleanDebugDirectoryEntries(LPBYTE pImageBase, PIMAGE_DEBUG_DIRECTORY pDebugDir, DWORD DebugDirSize, bool clean, bool cleanPath);
- void CleanDebugDirectoryEntry(LPBYTE pImageBase, PIMAGE_DEBUG_DIRECTORY pDebugDir, bool clean, bool cleanPath);
- void CleanCodeViewDebugInfo(LPBYTE pDebugInfo, DWORD DebugInfoSize, bool clean, bool cleanPath);
- char* GetFileName(char* filepath);
- void Print(char* message);
- void Print(std::string message);
+// CodeView header
+struct CV_HEADER
+{
+    DWORD CvSignature; // NBxx
+    LONG Offset; // Always 0 for NB10
+};
+
+// CodeView NB10 debug information
+// (used when debug information is stored in a PDB 2.00 file)
+struct CV_INFO_PDB20
+{
+    CV_HEADER Header;
+    DWORD Signature; // seconds since 01.01.1970
+    DWORD Age; // an always-incrementing value
+    BYTE PdbFileName[1]; // zero terminated string with the name of the PDB file
+};
+
+// CodeView RSDS debug information
+// (used when debug information is stored in a PDB 7.00 file)
+struct CV_INFO_PDB70
+{
+    DWORD CvSignature;
+    GUID Signature; // unique identifier
+    DWORD Age; // an always-incrementing value
+    BYTE PdbFileName[1]; // zero terminated string with the name of the PDB file
+};
+
+
+LPCTSTR ProcessCmdLine(int argc, TCHAR* argv[]);
+bool CheckDosHeader(PIMAGE_DOS_HEADER pDosHeader);
+bool CheckNtHeaders(PIMAGE_NT_HEADERS pNtHeaders);
+bool CheckSectionHeaders(PIMAGE_NT_HEADERS pNtHeaders);
+bool CheckDebugDirectory(PIMAGE_DEBUG_DIRECTORY pDebugDir, DWORD DebugDirSize);
+bool IsPE32Plus(PIMAGE_OPTIONAL_HEADER pOptionalHeader, bool& bPE32Plus);
+bool GetDebugDirectoryRVA(PIMAGE_OPTIONAL_HEADER pOptionalHeader, DWORD& DebugDirRva, DWORD& DebugDirSize);
+bool GetFileOffsetFromRVA(PIMAGE_NT_HEADERS pNtHeaders, DWORD Rva, DWORD& FileOffset);
+void CleanDebugDirectoryEntries(LPBYTE pImageBase, PIMAGE_DEBUG_DIRECTORY pDebugDir, DWORD DebugDirSize, bool clean, bool cleanPath);
+void CleanDebugDirectoryEntry(LPBYTE pImageBase, PIMAGE_DEBUG_DIRECTORY pDebugDir, bool clean, bool cleanPath);
+void CleanCodeViewDebugInfo(LPBYTE pDebugInfo, DWORD DebugInfoSize, bool clean, bool cleanPath);
+std::string GetFileName(char* filepath);
+void Print(char* message);
+void Print(std::string message);
 char* GuidToString(GUID guid);
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -128,210 +132,216 @@ char* GuidToString(GUID guid);
 // returns a pointer to the file name specified by the user.
 // If command line parameters are incorrect, the function returns  null.
 //
- LPCTSTR ProcessCmdLine(int argc, TCHAR* argv[])
- {
-	 if(argc < 2)
-	 {
-		_tprintf(_T("Usage: %s FileName(.dll|.exe) [clean|clean-path] \n clean: clears whole pdb path information \n clean-path: clears the pdb path and retains the filename."), argv[0]);
-		return 0;
-	 }	 
-	 return argv[1];
- }
+LPCTSTR ProcessCmdLine(int argc, TCHAR* argv[])
+{
+    if(argc < 2)
+    {
+        _tprintf(_T("Usage: %s FileName(.dll|.exe) [clean|clean-path] \n clean: clears whole pdb path information \n clean-path: clears the pdb path and retains the filename."), argv[0]);
+        return 0;
+    }	 
+    return argv[1];
+}
 
- //VG: 
-  LPCTSTR GetCmd(int argc, TCHAR* argv[])
- {
-	 if(argc < 2)
-	 {
-		_tprintf(_T("Usage: %s FileName(.dll|.exe) [clean|clean-path] \n clean: clears whole pdb path information \n clean-path: clears the pdb path and retains the filename."), argv[0]);
-		return 0;
-	 }
-	 if(argc == 3)
-	 {
-		return argv[2];
-	 }else	
-	 {
-		return NULL;
-	 }
-	 
- }
+//VG: 
+LPCTSTR GetCmd(int argc, TCHAR* argv[])
+{
+    if(argc < 2)
+    {
+        _tprintf(_T("Usage: %s FileName(.dll|.exe) [clean|clean-path] \n clean: clears whole pdb path information \n clean-path: clears the pdb path and retains the filename."), argv[0]);
+        return 0;
+    }
+    if(argc == 3)
+    {
+        return argv[2];
+    }else	
+    {
+        return NULL;
+    }
 
+}
+
+static bool str_eq(const char * a, const char * b)
+{
+    return stricmp(a, b) == 0;
+}
 ///////////////////////////////////////////////////////////////////////////////
 // main
 //
- int _tmain(int argc, TCHAR* argv[])
- {
-	 bool clean = false;
-	 bool cleanPath = false;
-	 LPCTSTR cleanCmd = _T("clean");
-	 LPCTSTR cleanPathCmd = _T("clean-path");	 
-	// Process the command line and obtain the file name
-	LPCTSTR FileName = ProcessCmdLine(argc, argv);
-	if(FileName == 0)
-		return 0;
-	
-	DWORD fileWord = GetFileAttributes(FileName);
-	if(fileWord == 0)
-	{
-		_tprintf(_T("Error: Cannot open the file. Error code: %u \n"), GetLastError());
-		return 0;
-	}
-	LPCTSTR option = GetCmd(argc, argv);
-	if(option != NULL)
-	{
-		int cmp = lstrcmp(option,cleanCmd);
-		int cmp1 = lstrcmp(option,cleanPathCmd);
-		if(cmp == 0)
-		{
-			clean = true;
-		}
-		else if(cmp1 == 0)
-		{
-			cleanPath = true;
-		}
-	}
-	
- 
-	// Process the file
-	HANDLE hFile = NULL;
-	HANDLE hFileMap = NULL;
-	LPVOID lpFileMem = 0;
-	unsigned long ulFileSize = 0;
- 	//Recalculate the checksum for the file now:
-	DWORD dwCurrentChecksum;
-	DWORD dwNewChecksum;
-	// Look up the debug directory:
-	DWORD DebugDirRva = 0;
-	DWORD DebugDirSize = 0;
-	
-	do
-	 {
-		 // Open the file and map it into memory:
-		 hFile = CreateFile(FileName, GENERIC_READ|GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-		 if((hFile == INVALID_HANDLE_VALUE) || (hFile == NULL))
-		 {
-			 _tprintf(_T("Error: Cannot open the file. Error code: %u \n"), GetLastError());
-			 break;
-		 }
-		ulFileSize = GetFileSize(hFile,NULL);
- 
-		hFileMap = CreateFileMapping(hFile, NULL, PAGE_READWRITE, 0, 0, NULL);
-		if(hFileMap == NULL)
-		{
-			_tprintf(_T("Error: Cannot open the file mapping object. Error code: %u \n"), GetLastError());
-			break;
-		}
- 
-		lpFileMem = MapViewOfFile(hFileMap, FILE_MAP_WRITE, 0, 0, 0);
-		if(lpFileMem == 0)
-		{
-			_tprintf(_T("Error: Cannot map the file. Error code: %u \n"),
-			GetLastError());
-			break;
-		}
- 
-		// Is it a valid PE executable?
-		PIMAGE_DOS_HEADER pDosHeader = (PIMAGE_DOS_HEADER)lpFileMem;
-		if(!CheckDosHeader(pDosHeader))
-		{
-			_tprintf(_T("Error: File is not a PE executable.\n"));
-			break;
-		}
- 
-		PIMAGE_NT_HEADERS pNtHeaders = MakePtr(PIMAGE_NT_HEADERS, pDosHeader, pDosHeader->e_lfanew);
-		if(!CheckNtHeaders(pNtHeaders))
-		{
-			_tprintf(_T("Error: File is not a PE executable.\n"));
-			break;
-		}
- 
-		if(!CheckSectionHeaders(pNtHeaders))
-		{
-			_tprintf(_T("Error: File is not a PE executable.\n"));
-			break;
-		}
- 
-		
-		if(!GetDebugDirectoryRVA(&pNtHeaders->OptionalHeader, DebugDirRva, DebugDirSize))
-		{
-			_tprintf(_T("Error: File is not a PE executable.\n"));
-			break;
-		}
- 
-		if((DebugDirRva == 0) || (DebugDirSize == 0))
-		{
-			_tprintf(_T("Debug directory not found.\n"));
-			break;
-		}
- 
-		DWORD DebugDirOffset = 0;
-		if(!GetFileOffsetFromRVA(pNtHeaders, DebugDirRva, DebugDirOffset))
-		{
-			_tprintf(_T("Debug directory not found.\n"));
-			break;
-		}
- 
-		PIMAGE_DEBUG_DIRECTORY pDebugDir = MakePtr(PIMAGE_DEBUG_DIRECTORY, lpFileMem, DebugDirOffset);
-		if(!CheckDebugDirectory(pDebugDir, DebugDirSize))
-		{
-			_tprintf( _T("Error: Debug directory is not valid.\n") );
-			break;
-		}
- 
-		// Sanitize information in every entry in the debug directory:
-		CleanDebugDirectoryEntries((LPBYTE)lpFileMem, pDebugDir, DebugDirSize, clean, cleanPath);
- 
-		if(clean || cleanPath)
-		{
-			if(!CheckSumMappedFile(lpFileMem, ulFileSize, &dwCurrentChecksum, &dwNewChecksum))
-			{
-				_tprintf(_T("Error: Cannot recalculate checksum for mapped file. Error code: %u \n"), GetLastError()); _ASSERT(0); 
-			}
-			pNtHeaders->OptionalHeader.CheckSum = dwNewChecksum;
-		}
-		
-	}
-	while(0); //do-while(0) with a "break" just a way to avoid using "goto"
- 
-	// Cleanup:
-	if(lpFileMem != 0)
-	{ 
-		//Write out the memory-mapped file's buffer back to its file:
-		if(FlushViewOfFile(lpFileMem,0) == 0)
-		{
-		_tprintf(_T("Error: Cannot write memory-mapped file back to disk. Error code: %u \n"), GetLastError());
-		_ASSERT(0);
-		}
- 
-		if(!UnmapViewOfFile(lpFileMem))
-		{
-			_tprintf(_T("Error: Cannot unmap the file. Error code: %u \n"), GetLastError());
-			_ASSERT(0);
-		}	
-	}
- 
-	if(hFileMap != NULL)
-	{
-		if(!CloseHandle(hFileMap))
-		{
-			_tprintf(_T("Error: Cannot close the file mapping object. Error	code: %u \n"), GetLastError());
-			_ASSERT(0);
-		}
-	}
- 
-	if((hFile != NULL) && (hFile != INVALID_HANDLE_VALUE))
-	{
-		if(!CloseHandle(hFile))
-		{
-			_tprintf(_T("Error: Cannot close the file. Error code: %u \n"),	GetLastError());
-			_ASSERT(0);
-		}
-	}
- 
-// Complete
- return 0;
- }
- 
+int _tmain(int argc, TCHAR* argv[])
+{
+    bool clean = false;
+    bool cleanPath = false;
+    LPCTSTR cleanCmd = _T("clean");
+    LPCTSTR cleanPathCmd = _T("clean-path");	 
+    // Process the command line and obtain the file name
+    if (argc != 3 || (str_eq(cleanCmd, argv[2]) == false
+                && str_eq(cleanPathCmd, argv[2]) == false) )
+    {
+        _tprintf(_T("usage: %s file.exe [%s|%s]\n")
+                , argv[0], cleanCmd, cleanPathCmd);
+        return 1;
+    }
+    LPCTSTR FileName = ProcessCmdLine(argc, argv);
+    if(FileName == 0)
+        return 0;
+
+    DWORD fileWord = GetFileAttributes(FileName);
+    if(fileWord == 0)
+    {
+        _tprintf(_T("Error: Cannot open the file [%s]. Error code: %lu \n"), FileName, GetLastError());
+        return 1;
+    }
+    LPCTSTR option = GetCmd(argc, argv);
+    if(option != NULL)
+    {
+        int cmp = lstrcmp(option,cleanCmd);
+        int cmp1 = lstrcmp(option,cleanPathCmd);
+        if(cmp == 0)
+        {
+            clean = true;
+        }
+        else if(cmp1 == 0)
+        {
+            cleanPath = true;
+        }
+    }
+
+
+    // Process the file
+    HANDLE hFile = NULL;
+    HANDLE hFileMap = NULL;
+    LPVOID lpFileMem = 0;
+    unsigned long ulFileSize = 0;
+    //Recalculate the checksum for the file now:
+    DWORD dwCurrentChecksum;
+    DWORD dwNewChecksum;
+    // Look up the debug directory:
+    DWORD DebugDirRva = 0;
+    DWORD DebugDirSize = 0;
+
+    // Open the file and map it into memory:
+    hFile = CreateFile(FileName, GENERIC_READ|GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if((hFile == INVALID_HANDLE_VALUE) || (hFile == NULL))
+    {
+        _tprintf(_T("Error: Cannot open the file [%s]. Error code: %lu \n"), FileName, GetLastError());
+        return 1;
+    }
+    ulFileSize = GetFileSize(hFile,NULL);
+
+    hFileMap = CreateFileMapping(hFile, NULL, PAGE_READWRITE, 0, 0, NULL);
+    if(hFileMap == NULL)
+    {
+        _tprintf(_T("Error: Cannot open the file mapping object for [%s]. Error code: %lu \n"), FileName, GetLastError());
+        return 1;
+    }
+
+    lpFileMem = MapViewOfFile(hFileMap, FILE_MAP_WRITE, 0, 0, 0);
+    if(lpFileMem == 0)
+    {
+        _tprintf(_T("Error: Cannot map the file [%s]. Error code: %lu \n")
+                , FileName, GetLastError());
+        return 1;
+    }
+
+    // Is it a valid PE executable?
+    PIMAGE_DOS_HEADER pDosHeader = (PIMAGE_DOS_HEADER)lpFileMem;
+    if(!CheckDosHeader(pDosHeader))
+    {
+        _tprintf(_T("Error: File [%s] is not a PE executable.\n"), FileName);
+        return 1;
+    }
+
+    PIMAGE_NT_HEADERS pNtHeaders = MakePtr(PIMAGE_NT_HEADERS, pDosHeader, pDosHeader->e_lfanew);
+    if(!CheckNtHeaders(pNtHeaders))
+    {
+        _tprintf(_T("Error: File [%s] is not a PE executable.\n"), FileName);
+        return 1;
+    }
+
+    if(!CheckSectionHeaders(pNtHeaders))
+    {
+        _tprintf(_T("Error: File [%s] is not a PE executable.\n"), FileName);
+        return 1;
+    }
+
+
+    if(!GetDebugDirectoryRVA(&pNtHeaders->OptionalHeader, DebugDirRva, DebugDirSize))
+    {
+        _tprintf(_T("Error: File [%s] is not a PE executable.\n"), FileName);
+        return 1;
+    }
+
+    if((DebugDirRva == 0) || (DebugDirSize == 0))
+    {
+        _tprintf(_T("Debug directory not found.\n"));
+        return 1;
+    }
+
+    DWORD DebugDirOffset = 0;
+    if(!GetFileOffsetFromRVA(pNtHeaders, DebugDirRva, DebugDirOffset))
+    {
+        _tprintf(_T("Debug directory not found.\n"));
+        return 1;
+    }
+
+    PIMAGE_DEBUG_DIRECTORY pDebugDir = MakePtr(PIMAGE_DEBUG_DIRECTORY, lpFileMem, DebugDirOffset);
+    if(!CheckDebugDirectory(pDebugDir, DebugDirSize))
+    {
+        _tprintf( _T("Error: Debug directory is not valid.\n") );
+        return 1;
+    }
+
+    // Sanitize information in every entry in the debug directory:
+    CleanDebugDirectoryEntries((LPBYTE)lpFileMem, pDebugDir, DebugDirSize, clean, cleanPath);
+
+    if(clean || cleanPath)
+    {
+        if(!CheckSumMappedFile(lpFileMem, ulFileSize, &dwCurrentChecksum, &dwNewChecksum))
+        {
+            _tprintf(_T("Error: Cannot recalculate checksum for mapped file. Error code: %lu \n"), GetLastError()); _ASSERT(0); 
+            return 1;
+        }
+        pNtHeaders->OptionalHeader.CheckSum = dwNewChecksum;
+    }
+
+    // Cleanup:
+    if(lpFileMem != 0)
+    { 
+        //Write out the memory-mapped file's buffer back to its file:
+        if(FlushViewOfFile(lpFileMem,0) == 0)
+        {
+            _tprintf(_T("Error: Cannot write memory-mapped file back to disk. Error code: %lu \n"), GetLastError());
+            _ASSERT(0);
+        }
+
+        if(!UnmapViewOfFile(lpFileMem))
+        {
+            _tprintf(_T("Error: Cannot unmap the file. Error code: %lu \n"), GetLastError());
+            _ASSERT(0);
+        }	
+    }
+
+    if(hFileMap != NULL)
+    {
+        if(!CloseHandle(hFileMap))
+        {
+            _tprintf(_T("Error: Cannot close the file mapping object. Error	code: %lu \n"), GetLastError());
+            _ASSERT(0);
+        }
+    }
+
+    if((hFile != NULL) && (hFile != INVALID_HANDLE_VALUE))
+    {
+        if(!CloseHandle(hFile))
+        {
+            _tprintf(_T("Error: Cannot close the file. Error code: %lu \n"),	GetLastError());
+            _ASSERT(0);
+        }
+    }
+
+    return 0;
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -341,28 +351,28 @@ char* GuidToString(GUID guid);
 // Return value: "true" if the header is valid and the file is a PE executable,
 // "false" otherwise
 //
- bool CheckDosHeader(PIMAGE_DOS_HEADER pDosHeader)
- {
- // Check whether the header is valid and belongs to a PE executable
-	 if(pDosHeader == 0)
-	 {
-		 _ASSERT(0);
-		 return false;
-	 }
- 
-	if(IsBadReadPtr(pDosHeader, sizeof(IMAGE_DOS_HEADER)))
-	{
-		// Invalid header
-		return false; 
-	} 
-	if(pDosHeader->e_magic != IMAGE_DOS_SIGNATURE)
-	{
-		// Not a PE executable
-		return false;
-	}
-	return true;
- }
- 
+bool CheckDosHeader(PIMAGE_DOS_HEADER pDosHeader)
+{
+    // Check whether the header is valid and belongs to a PE executable
+    if(pDosHeader == 0)
+    {
+        _ASSERT(0);
+        return false;
+    }
+
+    if(IsBadReadPtr(pDosHeader, sizeof(IMAGE_DOS_HEADER)))
+    {
+        // Invalid header
+        return false; 
+    } 
+    if(pDosHeader->e_magic != IMAGE_DOS_SIGNATURE)
+    {
+        // Not a PE executable
+        return false;
+    }
+    return true;
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -372,49 +382,49 @@ char* GuidToString(GUID guid);
 // Return value: "true" if the headers are valid and the file is a PE executable,
 // "false" otherwise
 //
- bool CheckNtHeaders(PIMAGE_NT_HEADERS pNtHeaders)
- {
-	 // Check the signature
-	 if(pNtHeaders == 0)
-	 {
-		 _ASSERT(0);
-		 return false; 
-	 }
-	 if(IsBadReadPtr(pNtHeaders, sizeof(pNtHeaders->Signature)))
-	 {
-		 // Invalid header
-		 return false; 
-	 }
-	 if(pNtHeaders->Signature != IMAGE_NT_SIGNATURE)
-	 {
-		 // Not a PE executable
-		 return false;
-	 }
-	 // Check the file header
-	 if(IsBadReadPtr(&pNtHeaders->FileHeader, sizeof(IMAGE_FILE_HEADER)))
-	 {
-		 // Invalid header
-		 return false; 
-	 } 
-	 if(IsBadReadPtr(&pNtHeaders->OptionalHeader, pNtHeaders->FileHeader.SizeOfOptionalHeader))
-	 {
-		 // Invalid size of the optional header
-		 return false;
-	 }
- 
-	// Determine the format of the header
-	// If true, PE32+, otherwise PE32
-	bool bPE32Plus = false; 
-	if(!IsPE32Plus(&pNtHeaders->OptionalHeader, bPE32Plus))
-	{
-		// Probably invalid IMAGE_OPTIONAL_HEADER.Magic
-		return false;
-	}
- 
-	// Complete
-	return true;
- }
- 
+bool CheckNtHeaders(PIMAGE_NT_HEADERS pNtHeaders)
+{
+    // Check the signature
+    if(pNtHeaders == 0)
+    {
+        _ASSERT(0);
+        return false; 
+    }
+    if(IsBadReadPtr(pNtHeaders, sizeof(pNtHeaders->Signature)))
+    {
+        // Invalid header
+        return false; 
+    }
+    if(pNtHeaders->Signature != IMAGE_NT_SIGNATURE)
+    {
+        // Not a PE executable
+        return false;
+    }
+    // Check the file header
+    if(IsBadReadPtr(&pNtHeaders->FileHeader, sizeof(IMAGE_FILE_HEADER)))
+    {
+        // Invalid header
+        return false; 
+    } 
+    if(IsBadReadPtr(&pNtHeaders->OptionalHeader, pNtHeaders->FileHeader.SizeOfOptionalHeader))
+    {
+        // Invalid size of the optional header
+        return false;
+    }
+
+    // Determine the format of the header
+    // If true, PE32+, otherwise PE32
+    bool bPE32Plus = false; 
+    if(!IsPE32Plus(&pNtHeaders->OptionalHeader, bPE32Plus))
+    {
+        // Probably invalid IMAGE_OPTIONAL_HEADER.Magic
+        return false;
+    }
+
+    // Complete
+    return true;
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -422,23 +432,23 @@ char* GuidToString(GUID guid);
 //
 // Return value: "true" if the headers are valid, "false" otherwise
 //
- bool CheckSectionHeaders(PIMAGE_NT_HEADERS pNtHeaders)
- {
-	 if(pNtHeaders == 0)
-	 {
-		_ASSERT(0);
-		return false;
-	 }
- 
-	PIMAGE_SECTION_HEADER pSectionHeaders = IMAGE_FIRST_SECTION(pNtHeaders); 
-	if(IsBadReadPtr(pSectionHeaders, pNtHeaders->FileHeader.NumberOfSections * sizeof(IMAGE_SECTION_HEADER)))
-	{
-		// Invalid header
-		return false;
-	}
-	return true;
- }
- 
+bool CheckSectionHeaders(PIMAGE_NT_HEADERS pNtHeaders)
+{
+    if(pNtHeaders == 0)
+    {
+        _ASSERT(0);
+        return false;
+    }
+
+    PIMAGE_SECTION_HEADER pSectionHeaders = IMAGE_FIRST_SECTION(pNtHeaders); 
+    if(IsBadReadPtr(pSectionHeaders, pNtHeaders->FileHeader.NumberOfSections * sizeof(IMAGE_SECTION_HEADER)))
+    {
+        // Invalid header
+        return false;
+    }
+    return true;
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -446,29 +456,29 @@ char* GuidToString(GUID guid);
 //
 // Return value: "true" if the debug directory is valid, "false" if it  is not
 //
- bool CheckDebugDirectory(PIMAGE_DEBUG_DIRECTORY pDebugDir, DWORD DebugDirSize)
- {
-	 if((pDebugDir == 0) || (DebugDirSize == 0))
-	 {
-		 _ASSERT(0);
-		 return false;
-	 }
- 
-	if(IsBadReadPtr(pDebugDir, DebugDirSize))
-	{
-		// Invalid debug directory
-		return false;
-	}
- 
-	if(DebugDirSize < sizeof(IMAGE_DEBUG_DIRECTORY))
-	{
-		// Invalid size of the debug directory
-		return false;
-	}
- 
-	return true;
- }
- 
+bool CheckDebugDirectory(PIMAGE_DEBUG_DIRECTORY pDebugDir, DWORD DebugDirSize)
+{
+    if((pDebugDir == 0) || (DebugDirSize == 0))
+    {
+        _ASSERT(0);
+        return false;
+    }
+
+    if(IsBadReadPtr(pDebugDir, DebugDirSize))
+    {
+        // Invalid debug directory
+        return false;
+    }
+
+    if(DebugDirSize < sizeof(IMAGE_DEBUG_DIRECTORY))
+    {
+        // Invalid size of the debug directory
+        return false;
+    }
+
+    return true;
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -479,32 +489,32 @@ char* GuidToString(GUID guid);
 // format is PE32+, and "false" if the file format is PE32),
 // "false" if failed
 //
- bool IsPE32Plus(PIMAGE_OPTIONAL_HEADER pOptionalHeader, bool& bPE32Plus)
- {
-	 // Note: The function does not check the header for validity.
-	 // It assumes that the caller has performed all the necessary checks.
-	 // IMAGE_OPTIONAL_HEADER.Magic field contains the value that allows
-	 // to distinguish between PE32 and PE32+ formats 
-	if(pOptionalHeader->Magic == IMAGE_NT_OPTIONAL_HDR32_MAGIC)
-	{
-		// PE32
-		bPE32Plus = false; 
-	}
-	else if(pOptionalHeader->Magic == IMAGE_NT_OPTIONAL_HDR64_MAGIC)
-	{
-		// PE32+
-		bPE32Plus = true;
-	} 
-	else 
-	{
-		// Unknown value -> Report an error
-		bPE32Plus = false;
-		return false;
-	}
- 
-	return true;
- }
- 
+bool IsPE32Plus(PIMAGE_OPTIONAL_HEADER pOptionalHeader, bool& bPE32Plus)
+{
+    // Note: The function does not check the header for validity.
+    // It assumes that the caller has performed all the necessary checks.
+    // IMAGE_OPTIONAL_HEADER.Magic field contains the value that allows
+    // to distinguish between PE32 and PE32+ formats 
+    if(pOptionalHeader->Magic == IMAGE_NT_OPTIONAL_HDR32_MAGIC)
+    {
+        // PE32
+        bPE32Plus = false; 
+    }
+    else if(pOptionalHeader->Magic == IMAGE_NT_OPTIONAL_HDR64_MAGIC)
+    {
+        // PE32+
+        bPE32Plus = true;
+    } 
+    else 
+    {
+        // Unknown value -> Report an error
+        bPE32Plus = false;
+        return false;
+    }
+
+    return true;
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -514,52 +524,52 @@ char* GuidToString(GUID guid);
 //
 // Return value: "true" if succeeded, "false" if failed
 //
- bool GetDebugDirectoryRVA(PIMAGE_OPTIONAL_HEADER pOptionalHeader, DWORD& DebugDirRva, DWORD& DebugDirSize)
- {
-	// Check parameters
-	 if(pOptionalHeader == 0)
-	 {
-		 _ASSERT(0);
-		 return false;
-	 }
- 
-	// Determine the format of the PE executable
-	 bool bPE32Plus = false;
-	 if(!IsPE32Plus(pOptionalHeader, bPE32Plus))
-	 {
-		 // Probably invalid IMAGE_OPTIONAL_HEADER.Magic
-		 return false;
-	 }
- 
-	// Obtain the debug directory RVA and size
-	 if(bPE32Plus)
-	 {
-		 PIMAGE_OPTIONAL_HEADER64 pOptionalHeader64 = (PIMAGE_OPTIONAL_HEADER64)pOptionalHeader; 
-		 DebugDirRva = pOptionalHeader64->DataDirectory[IMAGE_DIRECTORY_ENTRY_DEBUG].VirtualAddress;
-		 DebugDirSize = pOptionalHeader64->DataDirectory[IMAGE_DIRECTORY_ENTRY_DEBUG].Size;
-	 }
-	 else
-	 {
-		 PIMAGE_OPTIONAL_HEADER32 pOptionalHeader32 = (PIMAGE_OPTIONAL_HEADER32)pOptionalHeader; 
-		 DebugDirRva = pOptionalHeader32->DataDirectory[IMAGE_DIRECTORY_ENTRY_DEBUG].VirtualAddress;
-		 DebugDirSize = pOptionalHeader32->DataDirectory[IMAGE_DIRECTORY_ENTRY_DEBUG].Size;
-	 }
-	 
-	 if((DebugDirRva == 0) && (DebugDirSize == 0)) 
-	 {
-		 // No debug directory in the executable -> no debug information
-		 return true;
-	 }
-	else if((DebugDirRva == 0) || (DebugDirSize == 0))
-	{
-		// Inconsistent data in the data directory
-		return false;
-	}
- 
-	// Complete
-	return true;
- }
- 
+bool GetDebugDirectoryRVA(PIMAGE_OPTIONAL_HEADER pOptionalHeader, DWORD& DebugDirRva, DWORD& DebugDirSize)
+{
+    // Check parameters
+    if(pOptionalHeader == 0)
+    {
+        _ASSERT(0);
+        return false;
+    }
+
+    // Determine the format of the PE executable
+    bool bPE32Plus = false;
+    if(!IsPE32Plus(pOptionalHeader, bPE32Plus))
+    {
+        // Probably invalid IMAGE_OPTIONAL_HEADER.Magic
+        return false;
+    }
+
+    // Obtain the debug directory RVA and size
+    if(bPE32Plus)
+    {
+        PIMAGE_OPTIONAL_HEADER64 pOptionalHeader64 = (PIMAGE_OPTIONAL_HEADER64)pOptionalHeader; 
+        DebugDirRva = pOptionalHeader64->DataDirectory[IMAGE_DIRECTORY_ENTRY_DEBUG].VirtualAddress;
+        DebugDirSize = pOptionalHeader64->DataDirectory[IMAGE_DIRECTORY_ENTRY_DEBUG].Size;
+    }
+    else
+    {
+        PIMAGE_OPTIONAL_HEADER32 pOptionalHeader32 = (PIMAGE_OPTIONAL_HEADER32)pOptionalHeader; 
+        DebugDirRva = pOptionalHeader32->DataDirectory[IMAGE_DIRECTORY_ENTRY_DEBUG].VirtualAddress;
+        DebugDirSize = pOptionalHeader32->DataDirectory[IMAGE_DIRECTORY_ENTRY_DEBUG].Size;
+    }
+
+    if((DebugDirRva == 0) && (DebugDirSize == 0)) 
+    {
+        // No debug directory in the executable -> no debug information
+        return true;
+    }
+    else if((DebugDirRva == 0) || (DebugDirSize == 0))
+    {
+        // Inconsistent data in the data directory
+        return false;
+    }
+
+    // Complete
+    return true;
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -569,110 +579,110 @@ char* GuidToString(GUID guid);
 //
 // Return value: "true" if succeeded, "false" if failed
 //
- bool GetFileOffsetFromRVA(PIMAGE_NT_HEADERS pNtHeaders, DWORD Rva, DWORD& FileOffset)
- {
-	 // Check parameters
-	 if(pNtHeaders == 0)
-	 {
-		 _ASSERT(0);
-		 return false;
-	 }
- 
-	// Look up the section the RVA belongs to:
-	bool bFound = false;
- 
-	PIMAGE_SECTION_HEADER pSectionHeader = IMAGE_FIRST_SECTION(pNtHeaders); 
-	for(int i = 0; i < pNtHeaders->FileHeader.NumberOfSections; i++, pSectionHeader++) 
-	{
-		DWORD SectionSize = pSectionHeader->Misc.VirtualSize;
-		
-		if(SectionSize == 0) // compensate for Watcom linker strangeness, according to Matt Pietrek
-			pSectionHeader->SizeOfRawData; 
-		if((Rva >= pSectionHeader->VirtualAddress) && (Rva < pSectionHeader->VirtualAddress + SectionSize))
-		{
-			// Yes, the RVA belongs to this section
-			bFound = true;
-			break;
-		}
-	}
-	
-	if(!bFound)
-	{
-		// Section not found
-		return false;
-	}
-	
-	// Look up the file offset using the section header
-	INT Diff = (INT)(pSectionHeader->VirtualAddress - pSectionHeader->PointerToRawData);
-	
-	FileOffset = Rva - Diff;
-	// Complete
-	return true;
- }
- 
+bool GetFileOffsetFromRVA(PIMAGE_NT_HEADERS pNtHeaders, DWORD Rva, DWORD& FileOffset)
+{
+    // Check parameters
+    if(pNtHeaders == 0)
+    {
+        _ASSERT(0);
+        return false;
+    }
+
+    // Look up the section the RVA belongs to:
+    bool bFound = false;
+
+    PIMAGE_SECTION_HEADER pSectionHeader = IMAGE_FIRST_SECTION(pNtHeaders); 
+    for(int i = 0; i < pNtHeaders->FileHeader.NumberOfSections; i++, pSectionHeader++) 
+    {
+        DWORD SectionSize = pSectionHeader->Misc.VirtualSize;
+
+        if(SectionSize == 0) // compensate for Watcom linker strangeness, according to Matt Pietrek
+            pSectionHeader->SizeOfRawData; 
+        if((Rva >= pSectionHeader->VirtualAddress) && (Rva < pSectionHeader->VirtualAddress + SectionSize))
+        {
+            // Yes, the RVA belongs to this section
+            bFound = true;
+            break;
+        }
+    }
+
+    if(!bFound)
+    {
+        // Section not found
+        return false;
+    }
+
+    // Look up the file offset using the section header
+    INT Diff = (INT)(pSectionHeader->VirtualAddress - pSectionHeader->PointerToRawData);
+
+    FileOffset = Rva - Diff;
+    // Complete
+    return true;
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////
- //
- // Walk through each entry in the debug directory and clean out the PDB
- // string info it may contain.
- //
- void CleanDebugDirectoryEntries(LPBYTE pImageBase, PIMAGE_DEBUG_DIRECTORY pDebugDir, DWORD DebugDirSize, bool clean, bool cleanPath)
- {
-	 // Check parameters
-	 if(!CheckDebugDirectory(pDebugDir, DebugDirSize))
-	 {
-		_ASSERT(0);
-		return;
-	 }
- 
-	if(pImageBase == 0)
-	 {
-		_ASSERT(0);
-		return;
-	 }
- 
-	// Determine the number of entries in the debug directory
-	 int NumEntries = DebugDirSize / sizeof(IMAGE_DEBUG_DIRECTORY);
- 
-	if(NumEntries == 0)
-	 {
-		_ASSERT(0);
-		return;
-	 }
- 
-	// Find information about every entry
-	 for(int i = 1; i <= NumEntries; i++, pDebugDir++)
-	 {
-		CleanDebugDirectoryEntry(pImageBase, pDebugDir, clean, cleanPath);
-	 }
- }
- 
+//
+// Walk through each entry in the debug directory and clean out the PDB
+// string info it may contain.
+//
+void CleanDebugDirectoryEntries(LPBYTE pImageBase, PIMAGE_DEBUG_DIRECTORY pDebugDir, DWORD DebugDirSize, bool clean, bool cleanPath)
+{
+    // Check parameters
+    if(!CheckDebugDirectory(pDebugDir, DebugDirSize))
+    {
+        _ASSERT(0);
+        return;
+    }
+
+    if(pImageBase == 0)
+    {
+        _ASSERT(0);
+        return;
+    }
+
+    // Determine the number of entries in the debug directory
+    int NumEntries = DebugDirSize / sizeof(IMAGE_DEBUG_DIRECTORY);
+
+    if(NumEntries == 0)
+    {
+        _ASSERT(0);
+        return;
+    }
+
+    // Find information about every entry
+    for(int i = 1; i <= NumEntries; i++, pDebugDir++)
+    {
+        CleanDebugDirectoryEntry(pImageBase, pDebugDir, clean, cleanPath);
+    }
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////
- //
- // Find the PDB string info in the debug directory entry and delete it.
- //
- void CleanDebugDirectoryEntry(LPBYTE pImageBase, PIMAGE_DEBUG_DIRECTORY pDebugDir, bool clean, bool cleanPath)
- {
-	 // Check parameters:
-	 if(pDebugDir == 0)
-	 {
-		_ASSERT(0);
-		return;
-	 }
- 
-	if(pImageBase == 0)
-	 {
-		_ASSERT(0);
-		return; 
-	} 
-	LPBYTE pDebugInfo = pImageBase + pDebugDir->PointerToRawData; 
-	if(pDebugDir->Type == IMAGE_DEBUG_TYPE_CODEVIEW) 
-	{
-		CleanCodeViewDebugInfo(pDebugInfo, pDebugDir->SizeOfData, clean, cleanPath);
-	}
- }
- 
+//
+// Find the PDB string info in the debug directory entry and delete it.
+//
+void CleanDebugDirectoryEntry(LPBYTE pImageBase, PIMAGE_DEBUG_DIRECTORY pDebugDir, bool clean, bool cleanPath)
+{
+    // Check parameters:
+    if(pDebugDir == 0)
+    {
+        _ASSERT(0);
+        return;
+    }
+
+    if(pImageBase == 0)
+    {
+        _ASSERT(0);
+        return; 
+    } 
+    LPBYTE pDebugInfo = pImageBase + pDebugDir->PointerToRawData; 
+    if(pDebugDir->Type == IMAGE_DEBUG_TYPE_CODEVIEW) 
+    {
+        CleanCodeViewDebugInfo(pDebugInfo, pDebugDir->SizeOfData, clean, cleanPath);
+    }
+}
+
 static void zero_str(char * ptr)
 {
     size_t len = strlen(ptr);
@@ -680,204 +690,188 @@ static void zero_str(char * ptr)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
- //
- // Find the PDB string info in the CodeView debug information block and  delete
- // it.
- //
- void CleanCodeViewDebugInfo(LPBYTE pDebugInfo, DWORD DebugInfoSize, bool clean, bool cleanPath)
- {
-	 // Check parameters
-	 if((pDebugInfo == 0) || (DebugInfoSize == 0))
-		return;
- 
-	if(IsBadReadPtr(pDebugInfo, DebugInfoSize))
-		return;
- 
-	if(DebugInfoSize < sizeof(DWORD)) // size of the signature
-		return;
- 
-	DWORD CvSignature = *(DWORD*)pDebugInfo;
- 
-	// Determine the format of the information:
-	 if(CvSignature == CV_SIGNATURE_NB10)
-	 {
-		 // NB10 signature indicates format PDB 2.00
-		 CV_INFO_PDB20* pCvInfo = (CV_INFO_PDB20*)pDebugInfo;
- 
-		if(IsBadReadPtr(pCvInfo, sizeof(CV_INFO_PDB20))) return; 
-		if(IsBadStringPtrA((CHAR*)pCvInfo->PdbFileName, UINT_MAX))
-		 return;
- 
-		//Overwrite the entire string with zeroes:
-		 char* szPdbFileName = (char*)(pCvInfo->PdbFileName);
-		 char* pdbFile = GetFileName(szPdbFileName);
-		  int cmp = strcmp(szPdbFileName, pdbFile);
-		 if(!clean && !cleanPath)
-		 {
-			//list and return
-			// _tprintf(_T("Debug file: %s \n"), szPdbFileName);
-			 char buffer [33];
-			  std::string str;
-			  str.append("Debug file ID: ").append(itoa(pCvInfo->Signature,buffer,10)).append("\n");
-			 str.append("Debug file Path: ").append(szPdbFileName);
-			 Print(str);
-			 return;
-		 }
-		 if(cmp == 0 && cleanPath)
-			 return;
-		  //_tprintf(_T("Debug file: %s \n"), szPdbFileName);
-		  char buffer [33];
-			  std::string str;
-			  str.append("Debug file ID: ").append(itoa(pCvInfo->Signature,buffer,10)).append("\n");
-			 str.append("Debug file Path: ").append(szPdbFileName);
-			 Print(str);
-		 if(clean)
-		 {
-			int iLength = strlen(szPdbFileName);
-			for(int i=0; i < iLength; i++) 
-			{
-				pCvInfo->PdbFileName[i] = 0x00;
-			}
-		 }
-		 else if(cleanPath)
-		 {
-			int iLength = strlen(pdbFile);
-			int j = 0;
-			for(int j=0; j < iLength; j++) 
-			{
-				pCvInfo->PdbFileName[j] = pdbFile[j];
-			}
+//
+// Find the PDB string info in the CodeView debug information block and  delete
+// it.
+//
+void CleanCodeViewDebugInfo(LPBYTE pDebugInfo, DWORD DebugInfoSize, bool clean, bool cleanPath)
+{
+    // Check parameters
+    if((pDebugInfo == 0) || (DebugInfoSize == 0))
+        return;
+
+    if(IsBadReadPtr(pDebugInfo, DebugInfoSize))
+        return;
+
+    if(DebugInfoSize < sizeof(DWORD)) // size of the signature
+        return;
+
+    DWORD CvSignature = *(DWORD*)pDebugInfo;
+
+    // Determine the format of the information:
+    if(CvSignature == CV_SIGNATURE_NB10)
+    {
+        // NB10 signature indicates format PDB 2.00
+        CV_INFO_PDB20* pCvInfo = (CV_INFO_PDB20*)pDebugInfo;
+
+        if(IsBadReadPtr(pCvInfo, sizeof(CV_INFO_PDB20))) return; 
+        if(IsBadStringPtrA((CHAR*)pCvInfo->PdbFileName, UINT_MAX))
+            return;
+
+        //Overwrite the entire string with zeroes:
+        char* szPdbFileName = (char*)(pCvInfo->PdbFileName);
+        std::string pdbFileStr = GetFileName(szPdbFileName);
+        const char * pdbFile = pdbFileStr.c_str();
+        int cmp = strcmp(szPdbFileName, pdbFile);
+        if(!clean && !cleanPath)
+        {
+            //list and return
+            // _tprintf(_T("Debug file: %s \n"), szPdbFileName);
+            char buffer [33];
+            std::string str;
+            str.append("Debug file ID: ").append(itoa(pCvInfo->Signature,buffer,10)).append("\n");
+            str.append("Debug file Path: ").append(szPdbFileName);
+            Print(str);
+            return;
+        }
+        if(cmp == 0 && cleanPath)
+            return;
+        //_tprintf(_T("Debug file: %s \n"), szPdbFileName);
+        char buffer [33];
+        std::string str;
+        str.append("Debug file ID: ").append(itoa(pCvInfo->Signature,buffer,10)).append("\n");
+        str.append("Debug file Path: ").append(szPdbFileName);
+        Print(str);
+        if(clean)
+        {
+            int iLength = strlen(szPdbFileName);
+            for(int i=0; i < iLength; i++) 
+            {
+                pCvInfo->PdbFileName[i] = 0x00;
+            }
+        }
+        else if(cleanPath)
+        {
+            int iLength = strlen(pdbFile);
+            int j = 0;
+            for(int j=0; j < iLength; j++) 
+            {
+                pCvInfo->PdbFileName[j] = pdbFile[j];
+            }
             // zero-out all the remain chars
             char * ptr = reinterpret_cast<char *>(& pCvInfo->PdbFileName[j+1]);
             zero_str(ptr);
-		 }
-	 }
-	 else if(CvSignature == CV_SIGNATURE_RSDS)
-	 {
-		 // RSDS signature indicates format PDB 7.00
-		 CV_INFO_PDB70* pCvInfo = (CV_INFO_PDB70*)pDebugInfo;
- 
-		if(IsBadReadPtr(pCvInfo, sizeof(CV_INFO_PDB70))) return; 
-		if(IsBadStringPtrA((CHAR*)pCvInfo->PdbFileName, UINT_MAX))
-		 return;
- 
-		//Overwrite the entire string with zeroes:
-		 char* szPdbFileName = (char*)(pCvInfo->PdbFileName);
-		 char* pdbFile = GetFileName(szPdbFileName);
-		 int cmp = strcmp(szPdbFileName, pdbFile);
-		 if(!clean && !cleanPath)
-		 {
-			//list and return
-			// _tprintf(_T("Debug file: %s \n"), szPdbFileName);
-			 std::string str;
-			 str.append("Debug file ID: ").append(GuidToString(pCvInfo->Signature)).append("\n");			 
-			 str.append("Debug file Path: ").append(szPdbFileName);
-			 Print(str);
-			 return;
-		 }
-		 if(cmp == 0 && cleanPath)
-		 {
-			 std::string str;
-			 str.append("Debug file ID: ").append(GuidToString(pCvInfo->Signature)).append("\n");			 
-			 str.append("Debug file Path: ").append(szPdbFileName);
-			 Print(str);
-			 return;
-		 }
-		  //_tprintf(_T("Debug file: %s \n"), szPdbFileName);		
-		 
-		 if(clean)
-		 {
-			int iLength = strlen(szPdbFileName);
-			for(int i=0; i < iLength; i++) 
-			{
-				pCvInfo->PdbFileName[i] = 0x00;
-			}
-			 std::string str;
-			 str.append("Replaced Debug file Path to: ").append((char*)pCvInfo->PdbFileName);
-			 Print(str);
-		 }
-		 else if(cleanPath)
-		 {
-			int iLength = strlen(pdbFile);
-			int j = 0;
-			for(int i=0; i < iLength; i++) 
-			{
-				j = i;
-				pCvInfo->PdbFileName[i] = pdbFile[i];
-			}
+        }
+    }
+    else if(CvSignature == CV_SIGNATURE_RSDS)
+    {
+        // RSDS signature indicates format PDB 7.00
+        CV_INFO_PDB70* pCvInfo = (CV_INFO_PDB70*)pDebugInfo;
+
+        if(IsBadReadPtr(pCvInfo, sizeof(CV_INFO_PDB70))) return; 
+        if(IsBadStringPtrA((CHAR*)pCvInfo->PdbFileName, UINT_MAX))
+            return;
+
+        //Overwrite the entire string with zeroes:
+        char* szPdbFileName = (char*)(pCvInfo->PdbFileName);
+        std::string pdbFile_str = GetFileName(szPdbFileName);
+        const char* pdbFile = pdbFile_str.c_str();
+        int cmp = strcmp(szPdbFileName, pdbFile);
+        if(!clean && !cleanPath)
+        {
+            //list and return
+            // _tprintf(_T("Debug file: %s \n"), szPdbFileName);
+            std::string str;
+            str.append("Debug file ID: ").append(GuidToString(pCvInfo->Signature)).append("\n");			 
+            str.append("Debug file Path: ").append(szPdbFileName);
+            Print(str);
+            return;
+        }
+        if(cmp == 0 && cleanPath)
+        {
+            std::string str;
+            str.append("Debug file ID: ").append(GuidToString(pCvInfo->Signature)).append("\n");			 
+            str.append("Debug file Path: ").append(szPdbFileName);
+            Print(str);
+            return;
+        }
+        //_tprintf(_T("Debug file: %s \n"), szPdbFileName);		
+
+        if(clean)
+        {
+            int iLength = strlen(szPdbFileName);
+            for(int i=0; i < iLength; i++) 
+            {
+                pCvInfo->PdbFileName[i] = 0x00;
+            }
+            std::string str;
+            str.append("Replaced Debug file Path to: ").append((char*)pCvInfo->PdbFileName);
+            Print(str);
+        }
+        else if(cleanPath)
+        {
+            int iLength = strlen(pdbFile);
+            int j = 0;
+            for(int i=0; i < iLength; i++) 
+            {
+                j = i;
+                pCvInfo->PdbFileName[i] = pdbFile[i];
+            }
             // zero-out all the remain chars
             char * ptr = reinterpret_cast<char *>(& pCvInfo->PdbFileName[j+1]);
             zero_str(ptr);
-			std::string str;
-			str.append("Replaced Debug file Path to: ").append((char*)pCvInfo->PdbFileName);
-			Print(str);
-		 }
-	 }
- }
+            std::string str;
+            str.append("Replaced Debug file Path to: ").append((char*)pCvInfo->PdbFileName);
+            Print(str);
+        }
+    }
+}
 
- void Print(std::string message)
- {
-	printf("%s \n",message.c_str());
- }
+void Print(std::string message)
+{
+    printf("%s \n",message.c_str());
+}
 
- void Print(char* message)
- {
-	printf("%s \n", message);
- }
+void Print(char* message)
+{
+    printf("%s \n", message);
+}
 
- ///////////////////////////////////////////////////////////////////////////////
- //
- // Gets file name from the full path
- //
- char* GetFileName(char* filepath)
- {
-	//
-	 if(filepath == NULL)
-		 return NULL;
-	char* f = filepath; //"E:\\vgaikwad\\petrel\\trunk\\code\\Backend\\obj\\Debug\\Generic.Backend.pdb";
-	char sep = '\\';
-	int h = -1, idx = -1, h1;
-	for(h = 0; h< strlen(f); h++)
-	{
-		if(f[h] == sep)
-		{
-		   idx = h;
-		}
-	}
-	
-	if(idx > -1)
-	{
-		char* f1= new char[(strlen(f) - idx) ];
-		h1 = 0;
-		for(h = idx + 1; h< strlen(f); h++, h1++)
-		{
-			f1[h1] = f[h];
-		}
-		f1[h1] = '\0'; //null termination
-		return f1;	
-	}
-	else
-	{
-		return filepath;
-	}
-	
- }
+///////////////////////////////////////////////////////////////////////////////
+//
+// Gets file name from the full path
+//
+std::string GetFileName(char* filepath)
+{
+    std::string fname_only;
+    //
+    if(filepath == NULL)
+        return fname_only;
+    const char sep = '\\';
+    char* last_back_slash = strrchr(filepath, sep); //"E:\\vgaikwad\\petrel\\trunk\\code\\Backend\\obj\\Debug\\Generic.Backend.pdb";
+    if (last_back_slash) {
+        fname_only = last_back_slash + 1;
+    } else {
+        fname_only = filepath;
+    }
+    return fname_only;
+}
 
- char* GuidToString(GUID guid)
-  {
-	  /*
-	OLECHAR* bstrGuid; 
-	guid.
-	StringFromCLSID(guid, &bstrGuid); 
-	CoTaskMemFree(bstrGuid);
-	char chars[20];
-	wcstombs((CHAR*)&chars, bstrGuid,sizeof(chars));
-	return chars; */
-	  static char buf[64] = {0};
-	  _snprintf(buf,sizeof(buf),"{%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X}", 
-		  guid.Data1, 
-		  guid.Data2, 
-		  guid.Data3,
-		  guid.Data4[0], guid.Data4[1], guid.Data4[2], guid.Data4[3], guid.Data4[4], guid.Data4[5], guid.Data4[6], guid.Data4[7]);
-	  return buf;
-  }
+char* GuidToString(GUID guid)
+{
+    /*
+       OLECHAR* bstrGuid; 
+       guid.
+       StringFromCLSID(guid, &bstrGuid); 
+       CoTaskMemFree(bstrGuid);
+       char chars[20];
+       wcstombs((CHAR*)&chars, bstrGuid,sizeof(chars));
+       return chars; */
+    static char buf[64] = {0};
+    _snprintf(buf,sizeof(buf),"{%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X}", 
+            guid.Data1, 
+            guid.Data2, 
+            guid.Data3,
+            guid.Data4[0], guid.Data4[1], guid.Data4[2], guid.Data4[3], guid.Data4[4], guid.Data4[5], guid.Data4[6], guid.Data4[7]);
+    return buf;
+}
